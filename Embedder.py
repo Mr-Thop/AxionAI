@@ -19,7 +19,7 @@ class Embed:
         json_res = json.loads(resume)
         return Document(
             page_content = f"{resume}",
-            metadata = {"id": n, "name": json_res["name"] , "Phone": json_res["phone"]}
+            metadata = {"id": n, "name": json_res["name"] , "email": json_res["email"]}
         )
     def add_docs(self,documents):
         self.db.add_documents(documents=documents)
@@ -27,6 +27,5 @@ class Embed:
     def match(self,skills,select):
         result = self.db.similarity_search(skills,k = select)
         return result
-
 
 

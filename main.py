@@ -1,28 +1,141 @@
+from flask import Flask , request , jsonify
+from flask_cors import CORS
+import logging
 from Models import Model
 from Parser import Parser
 from DB import DB
 from Embedder import Embed
 from Scheduler import Schedule
+from Evaluator import InterviewEvaluator
+from dotenv import load_dotenv
 import json
+import os
 
-# parser = Parser()
-# result = parser.parse(r"D:\Download\Hackathons\AIBoomi\AxionAI\resume\example1.pdf")
-# content = result["content"][0]
-# print("Parsed")
-#PROMPT = os.getenv("Prompt")
-# model = Model(PROMPT
-# print("Model Loaded")
-# structured = model.structure(content)
-# embed = Embed()
-# db = DB()
-# db.connect()
-# print("Connection Successful")
-# embed.create_db(db.string, db.collection)
-# docs = embed.create_document(1, json.dumps(structured))
-# embed.add_docs([docs])
-# db.close()
-# print("Connection Closed")
-scheduler = Schedule()
-scheduler.defaults("2026-02-05","10:00",30)
-scheduler.schedule_slots("./test.csv")
-scheduler.send_emails()
+
+load_dotenv()
+app = Flask(__name__)
+CORS(app)
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+
+model_4b = os.getenv("4b")
+model_27b = os.getenv("27b")
+db = DB()
+
+embedder = Embed()
+embedder.create_db(db.string,db.collection)
+logging.info("Embedder Loaded Successfully")
+
+evaluator = InterviewEvaluator(model_4b)
+logging.info("Evaluator Loaded Successfully")
+
+PROMPT = os.getenv("Prompt")
+JD_Prompt = os.getenv("JD_Prompt")
+Summary = os.getenv("Summary_Prompt")
+parser = Parser()
+
+
+@app.route("/",methods = ["GET","POST"])
+def default_route():
+    return jsonify({
+        "output" : "Backend Running Successfully"
+    })
+
+@app.route("/parse",methods = ["POST"])
+def parse():
+    db.connect()
+    logging.info("Database Connected Successfully")
+
+    
+    structure_model = Model(PROMPT,model_27b)
+    logging.info("Model Loaded Successfully")
+    
+    logging.info("Parsing Resumes")
+    
+
+    files = os.listdir("./resume")
+    contents = []
+    documents = []
+    for file_path in files:
+        if file_path.endswith(".pdf"):
+            path = r"./resume/" + file_path 
+            print(path)
+            result = parser.parse(path)
+            content = result["content"][0]
+            contents.append(content)
+    
+    if contents:
+        logging.info("Resumes Parsed Successfully")
+        for i in range(len(contents)):
+            structured = structure_model.send(contents[i])
+            doc = embedder.create_document(i, json.dumps(structured))
+            documents.append(doc)
+        
+        embedder.add_docs(documents)
+        logging.info("Resumes Embeddings Added Successfully")
+    else:
+        logging.error('No Resumes Found/Parsed')
+    
+    db.close()
+    return jsonify({
+        "output" : "Resumes Parsed and Embedded Successfully"
+    })
+
+@app.route("/match", methods = ["POST"])
+def match():
+    db.connect()
+    data = request.get_json()
+    JD = data.get("job_description")
+    k = data.get("candidates")
+    out = Model(JD_Prompt, model_4b).send(JD)
+    summarizer = Model(Summary,model_4b)
+
+    result = embedder.match(json.dumps(out),k)
+    output = []
+    for i in result:
+        content = {}
+        content["Name"] = i.metadata["name"]
+        content["Email"] = i.metadata["email"]
+        content["content"] = summarizer.send(json.dumps(i.page_content))
+        output.append(content)
+    db.close()
+    return jsonify(output)
+
+@app.route("/interview", methods = ["GET"])
+def interview():
+    # 0 for non_tech and 1 for tech questions
+    data = request.get_json()
+    q_id = data.get("id")
+    questions = evaluator.ask(q_id)
+    return jsonify(questions)
+
+@app.route("/interview",methods=["POST"])
+def edit():
+    data = request.get_json()
+    # 0 for non_tech and 1 for tech questions
+    q_id = data.get("id")
+    questions = data.get("questions")
+    evaluator.edit(questions,q_id)
+    return jsonify({"output" : "Questions Edited Successfully"})
+
+@app.route("/evaluate",methods = ["POST"])
+def score():
+    data = request.get_json()
+    candid = data.get("user_output")
+    result = evaluator.score_candid(candid)
+    return jsonify(result)
+
+@app.route("/schedule", methods = ["POST"])
+def email():
+    data = request.get_json()
+    date = data.get("date")
+    time = data.get("time")
+    slot_length = data.get("length")
+
+    scheduler = Schedule()
+    scheduler.defaults(date,time,slot_length)
+    scheduler.schedule_slots("./test.csv")
+    scheduler.send_emails()
+    return jsonify({"output" : "Emails Sent Successfully"})
+
+if __name__ == "__main__":
+    app.run(debug=True)

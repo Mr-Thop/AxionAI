@@ -5,10 +5,10 @@ import json
 
 load_dotenv()
 class Model:
-    def __init__(self,PROMPT):
+    def __init__(self,PROMPT,model_inp):
         API_KEY = os.getenv("GOOGLE_API_KEY")
         self.client = genai.Client(api_key=API_KEY)
-        self.chat = self.client.chats.create(model = "gemini-2.5-flash")
+        self.chat = self.client.chats.create(model = model_inp)
         response = self.chat.send_message(PROMPT)
 
     def json(self,text):
