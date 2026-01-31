@@ -5,9 +5,8 @@ import json
 
 load_dotenv()
 class Model:
-    def __init__(self):
+    def __init__(self,PROMPT):
         API_KEY = os.getenv("GOOGLE_API_KEY")
-        PROMPT = os.getenv("Prompt")
         self.client = genai.Client(api_key=API_KEY)
         self.chat = self.client.chats.create(model = "gemini-2.5-flash")
         response = self.chat.send_message(PROMPT)
@@ -30,9 +29,10 @@ class Model:
         return output if output else ""
 
 
-    def structure(self,content):
+    def send(self,content):
         response = self.chat.send_message(content)
         result = self.json(response.text)
         return result
+    
 
 

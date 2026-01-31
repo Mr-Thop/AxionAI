@@ -1,59 +1,32 @@
-from embedding import EmbeddingService
+from Models import Model
+from dotenv import load_dotenv
 
-class InterviewEvaluator:
-    def __init__(self):
-        self.embedding_service = EmbeddingService()
+load_dotenv()
 
-        # Ideal answers (can move to DB later)
-        self.questions = {
-            "1": {
-                "question": "What is a stack data structure?",
-                "ideal": (
-                    "A stack is a linear data structure that follows the Last In First Out principle. "
-                    "Elements are added using push and removed using pop."
-                )
-            },
-            "2": {
-                "question": "What is a queue data structure?",
-                "ideal": (
-                    "A queue is a linear data structure that follows the First In First Out principle. "
-                    "Elements are inserted at the rear and removed from the front."
-                )
-            }
-        }
+class InterviewEvaluator(Model):
+    def __init__(self,tech=None,non_tech=None):
+        PROMPT = os.getenv("Eval_prompt")
+        super().__init__(PROMPT)
+        self.tech_questions = tech if tech else [
+            "What is a stack data structure?",
+            "What is a queue data structure?",
+            "What is object-oriented programming?",
+            "What is an API?",
+            "What is a database index?"
+        ]
+        self.non_tech_questions = non_tech if non_tech else [
+            "Can you introduce yourself?",
+            "What are your strengths?",
+            "How do you handle stress or pressure?",
+            "Why do you want to work with our organization?",
+            "Describe a challenge you faced and how you overcame it."
+        ]
 
-    def score_answer(self, ideal, candidate):
-        ideal_vec = self.embedding_service.embed(ideal)
-        cand_vec = self.embedding_service.embed(candidate)
-        similarity = self.embedding_service.cosine_similarity(ideal_vec, cand_vec)
-        return round(similarity * 100, 2)
+    def ask_tech(self):
+        return self.tech_questions
 
-    def verdict(self, score):
-        if score >= 80: return "Excellent"
-        if score >= 60: return "Good"
-        if score >= 40: return "Average"
-        return "Needs Improvement"
+    def ask_non_tech(self):
+        return self.non_tech_questions
 
-    def evaluate(self, answers: dict):
-        results = []
-        total = 0
-
-        for qid, qdata in self.questions.items():
-            candidate_answer = answers.get(qid, "")
-            score = self.score_answer(qdata["ideal"], candidate_answer)
-            total += score
-
-            results.append({
-                "question": qdata["question"],
-                "answer": candidate_answer,
-                "score": score,
-                "verdict": self.verdict(score)
-            })
-
-        avg_score = round(total / len(self.questions), 2)
-
-        return {
-            "results": results,
-            "average_score": avg_score,
-            "final_verdict": self.verdict(avg_score)
-        }
+    def score_candid(self,candidate_output):
+        return self.send(candidate_output)

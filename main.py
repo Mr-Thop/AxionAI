@@ -9,7 +9,9 @@ import json
 # result = parser.parse(r"D:\Download\Hackathons\AIBoomi\AxionAI\resume\example1.pdf")
 # content = result["content"][0]
 # print("Parsed")
-# model = Model()
+#PROMPT = os.getenv("Prompt")
+# model = Model(PROMPT
+# print("Model Loaded")
 # structured = model.structure(content)
 # embed = Embed()
 # db = DB()
