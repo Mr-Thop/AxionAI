@@ -158,13 +158,28 @@ def email():
     scheduler.send_emails()
     return jsonify({"output" : "Emails Sent Successfully"})
 
-@app.route("/login",methods=["GET"])
-def login():
+@app.route("/login-user",methods=["GET"])
+def login_u():
     db.connect_MS()
     data = request.get_json()
     email = data.get("email")
     password = data.get("pass")
     query = f"SELECT * FROM users WHERE email = {email} AND password = {password}"
+
+    result = db.cursor_MS.execute(query).fetchone()
+    db.close_MS()
+    if result:
+        return jsonify({"user": "True"})
+    else:
+        return jsonify({"user": "False"})
+
+@app.route("/login-org",methods=["GET"])
+def login_o():
+    db.connect_MS()
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("pass")
+    query = f"SELECT * FROM org WHERE email = {email} AND password = {password}"
 
     result = db.cursor_MS.execute(query).fetchone()
     db.close_MS()
