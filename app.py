@@ -100,7 +100,7 @@ def match():
     db.close_PS()
     return jsonify(output)
 
-@app.route("/interview", methods = ["GET"])
+@app.route("/interview1", methods = ["POST"])
 def interview():
     # 0 for non_tech and 1 for tech questions
     data = request.get_json()
@@ -158,7 +158,7 @@ def email():
     scheduler.send_emails()
     return jsonify({"output" : "Emails Sent Successfully"})
 
-@app.route("/login-user",methods=["GET"])
+@app.route("/login-user",methods=["POST"])
 def login_u():
     db.connect_MS()
     data = request.get_json()
@@ -173,7 +173,7 @@ def login_u():
     else:
         return jsonify({"user": "False"})
 
-@app.route("/login-org",methods=["GET"])
+@app.route("/login-org",methods=["POST"])
 def login_o():
     db.connect_MS()
     data = request.get_json()

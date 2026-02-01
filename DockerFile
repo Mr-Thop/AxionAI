@@ -1,16 +1,31 @@
-# Read the doc: https://huggingface.co/docs/hub/spaces-sdks-docker
-# you will also find guides on how best to write your Dockerfile
+FROM python:3.10.11
 
-FROM python:3.9
+# Prevent Python buffering issues
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
 
-RUN useradd -m -u 1000 user
-USER user
-ENV PATH="/home/user/.local/bin:$PATH"
+# Create non-root user
+RUN useradd -m -u 1000 backenduser
 
 WORKDIR /app
 
-COPY --chown=user ./requirements.txt requirements.txt
-RUN pip install --no-cache-dir --upgrade -r requirements.txt
+# Copy requirements first (layer caching)
+COPY requirements.txt /app/requirements.txt
 
-COPY --chown=user . /app
-CMD ["gunicorn", "app:app", "--host", "0.0.0.0", "--port", "7860"]
+# Install dependencies
+RUN pip install --no-cache-dir --upgrade pip \
+    && pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . /app
+
+# Change ownership
+RUN chown -R backenduser:backenduser /app
+
+USER backenduser
+
+# Expose Flask port
+EXPOSE 7860
+
+# Start app (Flask)
+CMD ["python", "app.py"]
