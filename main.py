@@ -119,9 +119,17 @@ def edit():
 
 @app.route("/evaluate",methods = ["POST"])
 def score():
+    db.connect_MS()
     data = request.get_json()
     candid = data.get("user_output")
+    email = data.get("email")
+    password = data.get("password")
     result = evaluator.score_candid(candid)
+    score = result["score"]
+    query = f"Update score = {score} from users where Email = {email} and password = {password}"
+    db.cursor_MS.execute(query)
+    db.connection_MS.commit()
+    db.close_MS()
     return jsonify(result)
 
 
@@ -130,7 +138,7 @@ def create_user():
     df = scheduler.df
     for name,email,date,time in zip(df["Name"],df["Email"],scheduler.date,df["Slot"]):
         password = name[:5] + email[:5]
-        db.insert([name,email,date,time,password])
+        db.insert([name,email,date,time,password,0.0])
     
     db.connection_MS.commit()
     db.close_MS()
@@ -159,6 +167,7 @@ def login():
     query = f"SELECT * FROM users WHERE email = {email} AND password = {password}"
 
     result = db.cursor_MS.execute(query).fetchone()
+    db.close_MS()
     if result:
         return jsonify({"user": "True"})
     else:

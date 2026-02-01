@@ -30,7 +30,7 @@ class DB:
         self.cursor_MS = self.connection_MS.cursor()
 
     def insert(self, data):
-        insert_query = f"INSERT INTO users(name,email,date,time,password) VALUES %s"
+        insert_query = f"INSERT INTO users(name,email,date,time,password,score) VALUES %s"
         self.cursor_MS.execute(insert_query, (data,))
 
 
