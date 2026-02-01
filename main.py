@@ -42,7 +42,7 @@ def default_route():
 
 @app.route("/parse",methods = ["POST"])
 def parse():
-    db.connect()
+    db.connect_PS()
     logging.info("Database Connected Successfully")
 
     
@@ -75,14 +75,14 @@ def parse():
     else:
         logging.error('No Resumes Found/Parsed')
     
-    db.close()
+    db.close_PS()
     return jsonify({
         "output" : "Resumes Parsed and Embedded Successfully"
     })
 
 @app.route("/match", methods = ["POST"])
 def match():
-    db.connect()
+    db.connect_PS()
     data = request.get_json()
     JD = data.get("job_description")
     k = data.get("candidates")
@@ -97,7 +97,7 @@ def match():
         content["Email"] = i.metadata["email"]
         content["content"] = summarizer.send(json.dumps(i.page_content))
         output.append(content)
-    db.close()
+    db.close_PS()
     return jsonify(output)
 
 @app.route("/interview", methods = ["GET"])
@@ -124,6 +124,18 @@ def score():
     result = evaluator.score_candid(candid)
     return jsonify(result)
 
+
+def create_user():
+    db.connect_MS()
+    df = scheduler.df
+    for name,email,date,time in zip(df["Name"],df["Email"],scheduler.date,df["Slot"]):
+        password = name[:5] + email[:5]
+        db.insert([name,email,date,time,password])
+    
+    db.connection_MS.commit()
+    db.close_MS()
+
+
 @app.route("/schedule", methods = ["POST"])
 def email():
     data = request.get_json()
@@ -134,8 +146,24 @@ def email():
     scheduler = Schedule()
     scheduler.defaults(date,time,slot_length)
     scheduler.schedule_slots("./test.csv")
+    create_user()
     scheduler.send_emails()
     return jsonify({"output" : "Emails Sent Successfully"})
+
+@app.route("/login",methods=["GET"])
+def login():
+    db.connect_MS()
+    data = request.get_json()
+    email = data.get("email")
+    password = data.get("pass")
+    query = f"SELECT * FROM users WHERE email = {email} AND password = {password}"
+
+    result = db.cursor_MS.execute(query).fetchone()
+    if result:
+        return jsonify({"user": "True"})
+    else:
+        return jsonify({"user": "False"})
+
 
 if __name__ == "__main__":
     app.run(debug=True)

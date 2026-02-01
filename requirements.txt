@@ -14,3 +14,4 @@ langchain-cohere
 sqlalchemy
 google
 pandas
+mysql-connector-python
